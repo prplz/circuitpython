@@ -23,10 +23,18 @@ SECTIONS
     {
         . = ALIGN(4);
         KEEP(*(.isr_vector)) /* Startup code */
-
-        /* This first flash block is 16K annd the isr vectors only take up
-           about 400 bytes. Micropython pads this with files, but this didn't
-           work with the size of Circuitpython's ff object. */
+        *(.text.mp_execute_bytecode)
+        *(.text.usb_background)
+        *(.text.readline)
+        *(main)
+        *(.text.mp_lexer_to_next)
+        *(.text.mp_obj_str_format_helper)
+        *(powf)
+        *(.text.mscd_xfer_cb)
+        *(OTG_FS_IRQHandler)
+        *(.text.port_init)
+        *(.text.busio_uart_make_new)
+        *(.text.common_hal_busio_i2c_read)
 
         . = ALIGN(4);
     } >FLASH_ISR

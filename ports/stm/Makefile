@@ -145,7 +145,7 @@ ifndef BOOTLOADER_OFFSET
 	BOOTLOADER_OFFSET := 0x8000000
 endif
 
-LDFLAGS = $(CFLAGS) -Wl,-nostdlib -Wl,-T,$(LD_FILE) -Wl,-T,$(LD_COMMON) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections -specs=nano.specs
+LDFLAGS = $(CFLAGS) -Wl,-nostdlib -Wl,-T,$(LD_FILE) -Wl,-T,$(LD_COMMON) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections -specs=nano.specs -Wl,--print-memory-usage
 LIBS := -lgcc -lc
 
 # Use toolchain libm if we're not using our own.
@@ -295,7 +295,7 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(STEPECHO) "LINK $@"
 	$(Q)echo $^ > $(BUILD)/firmware.objs
 	$(Q)$(CC) -o $@ $(LDFLAGS) @$(BUILD)/firmware.objs -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $(LD_FILE)
+#	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $(LD_FILE)
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf
 	$(STEPECHO) "Create $@"
