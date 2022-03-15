@@ -45,7 +45,7 @@ def main(input_template: pathlib.Path, output_path: pathlib.Path, skus: str = ty
 
     quad_ok = quad_enable_status_byte is not None and quad_enable_bit_mask is not None
 
-    max_clock_speed_mhz = min((x.get("max_clock_speed_mhz", 1000) for x in flashes["nvm"]))
+    min_clock_speed_mhz = min((x.get("max_clock_speed_mhz", 1000) for x in flashes["nvm"]))
 
     default_power_of_two = None
     for nvm in flashes["nvm"]:
@@ -64,7 +64,7 @@ def main(input_template: pathlib.Path, output_path: pathlib.Path, skus: str = ty
         print("quad not ok", continuous_status_write, split_status_write)
         quad_ok = False
 
-    clock_divider = 4
+    clock_divider = math.ceil(125 / min_clock_speed_mhz / 2) * 2
 
     read_command = 0x03
     wait_cycles = 0
