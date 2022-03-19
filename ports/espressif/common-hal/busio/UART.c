@@ -30,15 +30,34 @@
 #include "components/driver/include/driver/uart.h"
 
 #include "mpconfigport.h"
+#include "shared/readline/readline.h"
 #include "shared/runtime/interrupt_char.h"
 #include "py/gc.h"
 #include "py/mperrno.h"
 #include "py/runtime.h"
 #include "py/stream.h"
+#include "supervisor/port.h"
 #include "supervisor/shared/translate.h"
 #include "supervisor/shared/tick.h"
 
 uint8_t never_reset_uart_mask = 0;
+
+#ifdef CIRCUITPY_DEBUG_UART_RX
+static QueueHandle_t event_queue;
+static void event_task(void *param) {
+    uart_event_t event;
+    while (true) {
+        if (xQueueReceive(event_queue, &event, portMAX_DELAY)) {
+            if (event.type == UART_PATTERN_DET) {
+                port_wake_main_task();
+                if (mp_interrupt_char == CHAR_CTRL_C) {
+                    mp_sched_keyboard_interrupt();
+                }
+            }
+        }
+    }
+}
+#endif
 
 void uart_reset(void) {
     for (uart_port_t num = 0; num < UART_NUM_MAX; num++) {
@@ -125,9 +144,28 @@ void common_hal_busio_uart_construct(busio_uart_obj_t *self,
 
     uint8_t rx_threshold = UART_FIFO_LEN - 8;
     // Install the driver before we change the settings.
-    if (uart_driver_install(self->uart_num, receiver_buffer_size, 0, 0, NULL, 0) != ESP_OK ||
-        uart_set_mode(self->uart_num, mode) != ESP_OK) {
-        mp_raise_ValueError(translate("Could not initialize UART"));
+    #ifdef CIRCUITPY_DEBUG_UART_RX
+    if (rx == CIRCUITPY_DEBUG_UART_RX) {
+        if (uart_driver_install(self->uart_num, receiver_buffer_size, 0, 20, &event_queue, 0) != ESP_OK ||
+            uart_set_mode(self->uart_num, mode) != ESP_OK) {
+            mp_raise_ValueError(translate("Could not initialize UART"));
+        }
+        uart_enable_pattern_det_baud_intr(self->uart_num, CHAR_CTRL_C, 1, 1, 0, 0);
+        xTaskCreatePinnedToCore(
+            event_task,
+            "uart_event_task",
+            configMINIMAL_STACK_SIZE,
+            NULL,
+            5,
+            NULL,
+            xPortGetCoreID());
+    } else
+    #endif
+    {
+        if (uart_driver_install(self->uart_num, receiver_buffer_size, 0, 0, NULL, 0) != ESP_OK ||
+            uart_set_mode(self->uart_num, mode) != ESP_OK) {
+            mp_raise_ValueError(translate("Could not initialize UART"));
+        }
     }
     uart_set_hw_flow_ctrl(self->uart_num, flow_control, rx_threshold);
 
